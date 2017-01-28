@@ -2,7 +2,7 @@ Turn your [Hyper](https://hyper.is/) terminal into nyan cat while typing. Audio 
 
 ![Screen Capture](capture.gif?raw=true "Screen Capture")
 
-To install, edit `~/.hyper.js` add add `hyper-cat` to `plugins`:
+To install, edit `~/.hyper.js` and add `hyper-cat` to `plugins`:
 
 ```
 module.exports = {
