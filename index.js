@@ -69,19 +69,43 @@ exports.decorateConfig = config => {
   })
 };
 
+
 // Share audio across terminal instances.
 let audio;
 let audioTimeout;
+let audioEnabled;
 const playAudio = () => {
+  if (!audioEnabled) {
+    return;
+  }
+
   clearTimeout(audioTimeout);
   audio.play();
   audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
+};
+
+exports.middleware = (store) => (next) => (action) => {
+  if ('SESSION_ADD_DATA' === action.type) {
+    const { data } = action;
+    if (/(hyper-cat-toggle-audio: command not found)|(command not found: hyper-cat-toggle-audio)/.test(data)) {
+      audioEnabled = !audioEnabled;
+      global.localStorage.setItem('hyperCatAudioEnabled', String(audioEnabled));
+    } else {
+      next(action);
+    }
+  } else {
+    next(action);
+  }
 };
 
 // code based on
 // https://atom.io/packages/power-mode
 // https://github.com/itszero/rage-power/blob/master/index.jsx
 exports.decorateTerm = (Term, { React, notify }) => {
+  // localStorage isn't immediately available when hyper starts up. That is why this statement
+  // is in here. It's not a very appropriate place for it I would guess, but YOLO. Nyan on.
+  audioEnabled = global.localStorage.getItem('hyperCatAudioEnabled') !== 'false';
+
   return class extends React.Component {
     constructor (props, context) {
       super(props, context);

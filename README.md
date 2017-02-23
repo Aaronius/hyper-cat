@@ -17,3 +17,7 @@ module.exports = {
 ```
 
 You may then need to reload your terminal.
+
+## Toggle Audio
+
+Is the audio too much nyan for you? You can toggle it by running the command `hyper-cat-toggle-audio` in the terminal.
