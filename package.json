@@ -1,6 +1,6 @@
 {
   "name": "hyper-cat",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Turn your Hyper terminal into nyan cat while typing.",
   "author": "Aaron Hardy",
   "license": "MIT",
