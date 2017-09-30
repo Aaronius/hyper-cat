@@ -1,5 +1,8 @@
 const Color = require('color');
 const path = require('path');
+var css_path = path.join(__dirname, 'stars.jpg');
+
+css_path = css_path.replace(/\\/g, "/");
 
 const RAINBOW_ALPHA_DECAY = 0.95;
 const RAINBOW_COLORS = [
@@ -35,21 +38,29 @@ exports.decorateConfig = config => {
     css: `
       ${config.css || ''}
       .hypercat-overlay {
+        overflow: hidden;
         display: none;
+        height: 100%;
       }
-      
+
+      canvas {
+        display: block;
+        height: 100%;
+        overflow: hidden;
+      }
+
       .hypercat-overlay.hypercat-active {
         display: block;
-        background-image: url(${path.join(__dirname, 'stars.jpg')});
+        background-image: url(file://${css_path});
         background-repeat: repeat;
         -webkit-animation: starscroll 4s infinite linear
       }
-      
+
       @-webkit-keyframes starscroll {
         from {background-position:0 0;}
         to {background-position:-1600px 0;}
       }
-      
+
       .hypercat-cursor {
         position: absolute;
         pointerEvents: none;
@@ -149,7 +160,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
       this._overlay = document.createElement('div');
       this._overlay.classList.add('hypercat-overlay');
       document.body.appendChild(this._overlay);
-      
+
       this._canvas = document.createElement('canvas');
       this._canvasContext = this._canvas.getContext('2d');
       this._canvas.width = window.innerWidth;
