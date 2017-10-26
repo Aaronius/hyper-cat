@@ -22,11 +22,25 @@ const DEEPPINK = '#f90297';
 const GRAY = '#9d9d9d';
 const SALMON = '#ff9593';
 
-const STAGGER_HEIGHT = 2;
+var stagger_height = 2;
+var audio_enabled = true;
+var orig_alpha = 1;
 
 const ACTIVE_DURATION = 250;
 
 exports.decorateConfig = config => {
+
+  const catConfig = Object.assign({
+    audio_enabled: audio_enabled,
+    stagger_height: stagger_height,
+    orig_alpha: orig_alpha
+  }, config.catCursor);
+
+  stagger_height = catConfig.stagger_height;
+  audio_enabled = catConfig.audio_enabled;
+  orig_alpha = catConfig.orig_alpha;
+
+
   return Object.assign({}, config, {
     cursorShape: 'block',
     termCSS: `
@@ -86,9 +100,16 @@ let audio;
 let audioTimeout;
 let audioEnabled;
 const playAudio = () => {
+
+  //terminal command
   if (!audioEnabled) {
     return;
   }
+  //setting command, probably a better way to do this
+  if (!audio_enabled){
+    return;
+  }
+
 
   clearTimeout(audioTimeout);
   audio.play();
@@ -208,7 +229,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
         ctx.fillRect(
           rainbow.left,
-          rainbow.top + stripeHeight * i + (staggerUp ? -STAGGER_HEIGHT : STAGGER_HEIGHT),
+          rainbow.top + stripeHeight * i + (staggerUp ? -stagger_height : stagger_height),
           rainbow.width,
           stripeHeight
         );
@@ -238,7 +259,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
     _spawnRainbow(rect) {
       // Make the rainbow a bit shorter than the cat for a proper nyan.
-      this._rainbows.push(Object.assign({ alpha: 1 }, {
+      this._rainbows.push(Object.assign({ alpha: orig_alpha }, {
         left: rect.left,
         top: rect.top + rect.height * .1,
         width: rect.width,
@@ -267,7 +288,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
       this._isStaggeredUp = !this._isStaggeredUp;
 
-      const staggerTop = top + (this._isStaggeredUp ? -STAGGER_HEIGHT : STAGGER_HEIGHT);
+      const staggerTop = top + (this._isStaggeredUp ? -stagger_height : stagger_height);
 
       Object.assign(this._catCursor.style, {
         left: left + 'px',
