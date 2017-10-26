@@ -1,3 +1,5 @@
+const e = require('electron')
+
 const Color = require('color');
 const path = require('path');
 var css_path = path.join(__dirname, 'stars.jpg');
@@ -28,77 +30,12 @@ var orig_alpha = 1;
 
 const ACTIVE_DURATION = 250;
 
-exports.decorateConfig = config => {
-
-  const catConfig = Object.assign({
-    audio_enabled: audio_enabled,
-    stagger_height: stagger_height,
-    orig_alpha: orig_alpha
-  }, config.catCursor);
-
-  stagger_height = catConfig.stagger_height;
-  audio_enabled = catConfig.audio_enabled;
-  orig_alpha = catConfig.orig_alpha;
-
-
-  return Object.assign({}, config, {
-    cursorShape: 'block',
-    termCSS: `
-      ${config.termCSS || ''}
-      .cursor-node.hypercat-active {
-        opacity: 0 !important;
-      };
-    `,
-    css: `
-      ${config.css || ''}
-      .hypercat-overlay {
-        overflow: hidden;
-        display: none;
-        height: 100%;
-      }
-
-      canvas {
-        display: block;
-        height: 100%;
-        overflow: hidden;
-      }
-
-      .hypercat-overlay.hypercat-active {
-        display: block;
-        background-image: url(file://${css_path});
-        background-repeat: repeat;
-        -webkit-animation: starscroll 4s infinite linear
-      }
-
-      @-webkit-keyframes starscroll {
-        from {background-position:0 0;}
-        to {background-position:-1600px 0;}
-      }
-
-      .hypercat-cursor {
-        position: absolute;
-        pointerEvents: none;
-        background: radial-gradient(circle, ${DEEPPINK} 10%, transparent 10%),
-          radial-gradient(circle, ${DEEPPINK} 10%, ${PINK} 10%) 3px 3px;
-        backgroundSize: 6px 6px;
-        borderWidth: 1px;
-        borderColor: black;
-        borderStyle: solid;
-      }
-      .hypercat-asset {
-        display: none;
-        position: absolute;
-        pointerEvents: none;
-      }
-    `
-  })
-};
-
 
 // Share audio across terminal instances.
 let audio;
 let audioTimeout;
 let audioEnabled;
+
 const playAudio = () => {
 
   //terminal command
@@ -114,6 +51,10 @@ const playAudio = () => {
   clearTimeout(audioTimeout);
   audio.play();
   audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
+};
+
+exports.decorateConfig = (config) => {
+      //this doesn't work for some reason?
 };
 
 exports.middleware = (store) => (next) => (action) => {
@@ -134,6 +75,21 @@ exports.middleware = (store) => (next) => (action) => {
 // https://atom.io/packages/power-mode
 // https://github.com/itszero/rage-power/blob/master/index.jsx
 exports.decorateTerm = (Term, { React, notify }) => {
+
+  let myconfig = e.remote.app.config.getConfig();
+
+  const catConfig = Object.assign({
+    audio_enabled: audio_enabled,
+    stagger_height: stagger_height,
+    orig_alpha: orig_alpha
+  }, myconfig.catCursor);
+
+
+  stagger_height = catConfig.stagger_height;
+  audio_enabled = catConfig.audio_enabled;
+  orig_alpha = catConfig.orig_alpha;
+
+
   // localStorage isn't immediately available when hyper starts up. That is why this statement
   // is in here. It's not a very appropriate place for it I would guess, but YOLO. Nyan on.
   audioEnabled = global.localStorage.getItem('hyperCatAudioEnabled') !== 'false';
