@@ -1,5 +1,4 @@
 const e = require('electron')
-
 const Color = require('color');
 const path = require('path');
 var css_path = path.join(__dirname, 'stars.jpg');
@@ -24,75 +23,96 @@ const DEEPPINK = '#f90297';
 const GRAY = '#9d9d9d';
 const SALMON = '#ff9593';
 
-var stagger_height = 2;
-var audio_enabled = true;
-var orig_alpha = 1;
-
 const ACTIVE_DURATION = 250;
+
+var config = {
+  rainbowStaggerHeight: 2,
+  rainbowMaxAlpha: 1,
+  audioEnabled: true
+};
+
+exports.decorateConfig = config => {
+  return Object.assign({}, config, {
+    cursorShape: 'block',
+    termCSS: `
+      ${config.termCSS || ''}
+      .cursor-node.hypercat-active {
+        opacity: 0 !important;
+      };
+    `,
+    css: `
+      ${config.css || ''}
+      .hypercat-overlay {
+        overflow: hidden;
+        display: none;
+        height: 100%;
+      }
+
+      canvas {
+        display: block;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .hypercat-overlay.hypercat-active {
+        display: block;
+        background-image: url(file://${css_path});
+        background-repeat: repeat;
+        -webkit-animation: starscroll 4s infinite linear
+      }
+
+      @-webkit-keyframes starscroll {
+        from {background-position:0 0;}
+        to {background-position:-1600px 0;}
+      }
+
+      .hypercat-cursor {
+        position: absolute;
+        pointerEvents: none;
+        background: radial-gradient(circle, ${DEEPPINK} 10%, transparent 10%),
+          radial-gradient(circle, ${DEEPPINK} 10%, ${PINK} 10%) 3px 3px;
+        backgroundSize: 6px 6px;
+        borderWidth: 1px;
+        borderColor: black;
+        borderStyle: solid;
+      }
+      .hypercat-asset {
+        display: none;
+        position: absolute;
+        pointerEvents: none;
+      }
+    `
+  })
+};
 
 
 // Share audio across terminal instances.
 let audio;
 let audioTimeout;
-let audioEnabled;
-
 const playAudio = () => {
-
-  //terminal command
-  if (!audioEnabled) {
+  if (!config.audioEnabled) {
     return;
   }
-  //setting command, probably a better way to do this
-  if (!audio_enabled){
-    return;
-  }
-
 
   clearTimeout(audioTimeout);
   audio.play();
   audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
 };
 
-exports.decorateConfig = (config) => {
-      //this doesn't work for some reason?
-};
-
-exports.middleware = (store) => (next) => (action) => {
-  if ('SESSION_ADD_DATA' === action.type) {
-    const { data } = action;
-    if (/(hyper-cat-toggle-audio: command not found)|(command not found: hyper-cat-toggle-audio)/.test(data)) {
-      audioEnabled = !audioEnabled;
-      global.localStorage.setItem('hyperCatAudioEnabled', String(audioEnabled));
-    } else {
-      next(action);
-    }
-  } else {
-    next(action);
-  }
-};
 
 // code based on
 // https://atom.io/packages/power-mode
 // https://github.com/itszero/rage-power/blob/master/index.jsx
 exports.decorateTerm = (Term, { React, notify }) => {
 
-  let myconfig = e.remote.app.config.getConfig();
 
-  const catConfig = Object.assign({
-    audio_enabled: audio_enabled,
-    stagger_height: stagger_height,
-    orig_alpha: orig_alpha
-  }, myconfig.catCursor);
+  // app/config isn't loaded when hyper loads. grab from config when we can. Nyan on.
 
-
-  stagger_height = catConfig.stagger_height;
-  audio_enabled = catConfig.audio_enabled;
-  orig_alpha = catConfig.orig_alpha;
-
-
-  // localStorage isn't immediately available when hyper starts up. That is why this statement
-  // is in here. It's not a very appropriate place for it I would guess, but YOLO. Nyan on.
-  audioEnabled = global.localStorage.getItem('hyperCatAudioEnabled') !== 'false';
+  config = Object.assign({
+    rainbowStaggerHeight: 2,
+    rainbowMaxAlpha: 1,
+    audioEnabled: true
+  }, e.remote.app.config.getConfig().hyperCat);
 
   return class extends React.Component {
     constructor (props, context) {
@@ -185,7 +205,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
         ctx.fillRect(
           rainbow.left,
-          rainbow.top + stripeHeight * i + (staggerUp ? -stagger_height : stagger_height),
+          rainbow.top + stripeHeight * i + (staggerUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight),
           rainbow.width,
           stripeHeight
         );
@@ -215,7 +235,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
     _spawnRainbow(rect) {
       // Make the rainbow a bit shorter than the cat for a proper nyan.
-      this._rainbows.push(Object.assign({ alpha: orig_alpha }, {
+      this._rainbows.push(Object.assign({ alpha: config.rainbowMaxAlpha }, {
         left: rect.left,
         top: rect.top + rect.height * .1,
         width: rect.width,
@@ -244,7 +264,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
       this._isStaggeredUp = !this._isStaggeredUp;
 
-      const staggerTop = top + (this._isStaggeredUp ? -stagger_height : stagger_height);
+      const staggerTop = top + (this._isStaggeredUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight);
 
       Object.assign(this._catCursor.style, {
         left: left + 'px',
