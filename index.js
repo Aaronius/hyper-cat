@@ -1,3 +1,4 @@
+const e = require('electron')
 const Color = require('color');
 const path = require('path');
 var css_path = path.join(__dirname, 'stars.jpg');
@@ -22,9 +23,13 @@ const DEEPPINK = '#f90297';
 const GRAY = '#9d9d9d';
 const SALMON = '#ff9593';
 
-const STAGGER_HEIGHT = 2;
-
 const ACTIVE_DURATION = 250;
+
+var config = {
+  rainbowStaggerHeight: 2,
+  rainbowMaxAlpha: 1,
+  audioEnabled: true
+};
 
 exports.decorateConfig = config => {
   return Object.assign({}, config, {
@@ -84,9 +89,8 @@ exports.decorateConfig = config => {
 // Share audio across terminal instances.
 let audio;
 let audioTimeout;
-let audioEnabled;
 const playAudio = () => {
-  if (!audioEnabled) {
+  if (!config.audioEnabled) {
     return;
   }
 
@@ -95,27 +99,20 @@ const playAudio = () => {
   audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
 };
 
-exports.middleware = (store) => (next) => (action) => {
-  if ('SESSION_ADD_DATA' === action.type) {
-    const { data } = action;
-    if (/(hyper-cat-toggle-audio: command not found)|(command not found: hyper-cat-toggle-audio)/.test(data)) {
-      audioEnabled = !audioEnabled;
-      global.localStorage.setItem('hyperCatAudioEnabled', String(audioEnabled));
-    } else {
-      next(action);
-    }
-  } else {
-    next(action);
-  }
-};
 
 // code based on
 // https://atom.io/packages/power-mode
 // https://github.com/itszero/rage-power/blob/master/index.jsx
 exports.decorateTerm = (Term, { React, notify }) => {
-  // localStorage isn't immediately available when hyper starts up. That is why this statement
-  // is in here. It's not a very appropriate place for it I would guess, but YOLO. Nyan on.
-  audioEnabled = global.localStorage.getItem('hyperCatAudioEnabled') !== 'false';
+
+
+  // app/config isn't loaded when hyper loads. grab from config when we can. Nyan on.
+
+  config = Object.assign({
+    rainbowStaggerHeight: 2,
+    rainbowMaxAlpha: 1,
+    audioEnabled: true
+  }, e.remote.app.config.getConfig().hyperCat);
 
   return class extends React.Component {
     constructor (props, context) {
@@ -208,7 +205,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
         ctx.fillRect(
           rainbow.left,
-          rainbow.top + stripeHeight * i + (staggerUp ? -STAGGER_HEIGHT : STAGGER_HEIGHT),
+          rainbow.top + stripeHeight * i + (staggerUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight),
           rainbow.width,
           stripeHeight
         );
@@ -238,7 +235,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
     _spawnRainbow(rect) {
       // Make the rainbow a bit shorter than the cat for a proper nyan.
-      this._rainbows.push(Object.assign({ alpha: 1 }, {
+      this._rainbows.push(Object.assign({ alpha: config.rainbowMaxAlpha }, {
         left: rect.left,
         top: rect.top + rect.height * .1,
         width: rect.width,
@@ -267,7 +264,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
       this._isStaggeredUp = !this._isStaggeredUp;
 
-      const staggerTop = top + (this._isStaggeredUp ? -STAGGER_HEIGHT : STAGGER_HEIGHT);
+      const staggerTop = top + (this._isStaggeredUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight);
 
       Object.assign(this._catCursor.style, {
         left: left + 'px',
