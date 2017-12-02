@@ -4,20 +4,32 @@ Turn your [Hyper](https://hyper.is/) terminal into nyan cat while typing. Audio 
 
 To install, edit `~/.hyper.js` and add `hyper-cat` to `plugins`:
 
-```
+```js
 module.exports = {
-
-  config: { /*... */ },
-
+  ...
   plugins: [
     "hyper-cat"
   ]
-
+  ...
 };
 ```
 
 You may then need to reload your terminal.
 
-## Toggle Audio
+## Configuration
 
-Is the audio too much nyan for you? You can toggle it by running the command `hyper-cat-toggle-audio` in the terminal.
+Configuration can by applied by editing `~/.hyper.js` as follows:
+
+```js
+module.exports = {
+  config: {
+    ...
+    hyperCat: {
+      staggerHeight: 2, // The number of pixels the cat and rainbow should jump up and down.
+      rainbowMaxAlpha: 1, // The max opacity of the rainbow.
+      audioEnabled: true // Whether audio should play while typ9ing.
+    }
+    ...
+  }
+}
+```

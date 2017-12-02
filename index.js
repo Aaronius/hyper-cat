@@ -26,7 +26,7 @@ const SALMON = '#ff9593';
 const ACTIVE_DURATION = 250;
 
 var config = {
-  rainbowStaggerHeight: 2,
+  staggerHeight: 2,
   rainbowMaxAlpha: 1,
   audioEnabled: true
 };
@@ -201,7 +201,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
         ctx.fillRect(
           rainbow.left,
-          rainbow.top + stripeHeight * i + (staggerUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight),
+          rainbow.top + stripeHeight * i + (staggerUp ? -config.staggerHeight : config.staggerHeight),
           rainbow.width,
           stripeHeight
         );
@@ -260,7 +260,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
       this._isStaggeredUp = !this._isStaggeredUp;
 
-      const staggerTop = top + (this._isStaggeredUp ? -config.rainbowStaggerHeight : config.rainbowStaggerHeight);
+      const staggerTop = top + (this._isStaggeredUp ? -config.staggerHeight : config.staggerHeight);
 
       Object.assign(this._catCursor.style, {
         left: left + 'px',
