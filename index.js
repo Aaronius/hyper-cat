@@ -108,11 +108,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
   // app/config isn't loaded when hyper loads. grab from config when we can. Nyan on.
 
-  config = Object.assign({
-    rainbowStaggerHeight: 2,
-    rainbowMaxAlpha: 1,
-    audioEnabled: true
-  }, e.remote.app.config.getConfig().hyperCat);
+  config = Object.assign(config, e.remote.app.config.getConfig().hyperCat);
 
   return class extends React.Component {
     constructor (props, context) {
@@ -329,7 +325,9 @@ exports.decorateTerm = (Term, { React, notify }) => {
           this.setActive(false);
         }, ACTIVE_DURATION)
       } else {
-        this._termScreen.style.color = this.props.term.foregroundColor_;
+        if (this.props.term) { // sometimes null
+          this._termScreen.style.color = this.props.term.foregroundColor_;
+        }
       }
     }
 
