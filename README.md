@@ -27,7 +27,7 @@ module.exports = {
     hyperCat: {
       staggerHeight: 2, // The number of pixels the cat and rainbow should jump up and down.
       rainbowMaxAlpha: 1, // The max opacity of the rainbow.
-      audioEnabled: true // Whether audio should play while typ9ing.
+      audioEnabled: true // Whether audio should play while typing.
     }
     ...
   }
