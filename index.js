@@ -239,12 +239,36 @@ exports.decorateTerm = (Term, { React, notify }) => {
       }));
     }
 
+    _getOverlayBoundingClientRect() {
+      // Getting the bounding client rect is futile unless it's visible. If it's not already visible, we'll
+      // make it visible, take the measurement, then hide it.
+      // It's possible that the bounding client rect never changes so we could just take the measurement on startup,
+      // but who knows what other plugins will do.
+      const overlayIsVisible = this._overlay.classList.contains('hypercat-active');
+
+      if (!overlayIsVisible) {
+        this._overlay.classList.add('hypercat-active');
+      }
+
+      const rect = this._overlay.getBoundingClientRect();
+
+      if (!overlayIsVisible) {
+        this._overlay.classList.remove('hypercat-active');
+      }
+
+      return rect;
+    }
+
     _onCursorChange() {
-      const origin = this._termDiv.getBoundingClientRect();
+      // Some plugins, like hyperborder, make it so that the hyper-cat overlay (the container that contains all the
+      // hypercat stuff) is not at top=0 left=0. Because of this, we need to make the appropriate adjustment when
+      // figuring out where the cat cursor will be placed inside the overlay container.
+      const overlayRect = this._getOverlayBoundingClientRect();
+      const termRect = this._termDiv.getBoundingClientRect();
       const cursorRect = this._termCursor.getBoundingClientRect();
 
-      const left = origin.left + cursorRect.left;
-      const top = origin.top + cursorRect.top;
+      const left = termRect.left + cursorRect.left - overlayRect.left;
+      const top = termRect.top + cursorRect.top - overlayRect.top;
       const width = cursorRect.width;
       const height = cursorRect.height;
 
