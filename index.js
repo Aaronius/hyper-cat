@@ -32,14 +32,17 @@ var config = {
 };
 
 exports.decorateConfig = config => {
+  console.log(config);
+  return config;
+  // debugger;
   return Object.assign({}, config, {
     cursorShape: 'block',
-    termCSS: `
-      ${config.termCSS || ''}
-      .cursor-node.hypercat-active {
-        opacity: 0 !important;
-      };
-    `,
+    // termCSS: `
+    //   ${config.termCSS || ''}
+    //   .cursor-node.hypercat-active {
+    //     opacity: 0 !important;
+    //   };
+    // `,
     css: `
       ${config.css || ''}
       .hypercat-overlay {
@@ -115,23 +118,18 @@ exports.decorateTerm = (Term, { React, notify }) => {
       super(props, context);
       this._drawFrame = this._drawFrame.bind(this);
       this._resizeCanvas = this._resizeCanvas.bind(this);
-      this._onTerminal = this._onTerminal.bind(this);
-      this._onCursorChange = this._onCursorChange.bind(this);
+      this._onDecorated = this._onDecorated.bind(this);
+      this._onCursorMove = this._onCursorMove.bind(this);
       this._rainbows = [];
     }
 
-    _onTerminal (term) {
-      if (this.props.onTerminal) this.props.onTerminal(term);
-      this._termDiv = term.div_;
-      this._termCursor = term.cursorNode_;
-      this._termWindow = term.document_.defaultView;
-      this._termScreen = term.document_.querySelector('x-screen');
-      this._observer = new MutationObserver(this._onCursorChange);
-      this._observer.observe(this._termCursor, {
-        attributes: true,
-        childList: false,
-        characterData: false
-      });
+    _onDecorated (term) {
+      if (this.props.onDecorated) this.props.onDecorated(term);
+      this._termDiv = term.termRef;
+      // this._termCursor = term.cursorNode_;
+      // this._termWindow = term.document_.defaultView;
+      // this._termScreen = term.document_.querySelector('x-screen');
+      this._onCursorMove = this._onCursorMove.bind(this);
 
       this._initAudio();
       this._initOverlay();
@@ -160,8 +158,8 @@ exports.decorateTerm = (Term, { React, notify }) => {
       this._canvas.height = window.innerHeight;
       this._overlay.appendChild(this._canvas);
 
-      this._termWindow.requestAnimationFrame(this._drawFrame);
-      this._termWindow.addEventListener('resize', this._resizeCanvas);
+      window.requestAnimationFrame(this._drawFrame);
+      window.addEventListener('resize', this._resizeCanvas);
 
       this._initCatCursor();
       this._initCatAssets();
@@ -226,7 +224,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         staggerUp = !staggerUp;
       }
 
-      this._termWindow.requestAnimationFrame(this._drawFrame);
+      window.requestAnimationFrame(this._drawFrame);
     }
 
     _spawnRainbow(rect) {
@@ -253,24 +251,25 @@ exports.decorateTerm = (Term, { React, notify }) => {
       const rect = this._overlay.getBoundingClientRect();
 
       if (!overlayIsVisible) {
-        this._overlay.classList.remove('hypercat-active');
+        // this._overlay.classList.remove('hypercat-active');
       }
 
       return rect;
     }
 
-    _onCursorChange() {
+    _onCursorMove(cursorFrame) {
+      if (this.props.onCursorMove) this.props.onCursorMove(cursorFrame);
+
       // Some plugins, like hyperborder, make it so that the hyper-cat overlay (the container that contains all the
       // hypercat stuff) is not at top=0 left=0. Because of this, we need to make the appropriate adjustment when
       // figuring out where the cat cursor will be placed inside the overlay container.
       const overlayRect = this._getOverlayBoundingClientRect();
       const termRect = this._termDiv.getBoundingClientRect();
-      const cursorRect = this._termCursor.getBoundingClientRect();
 
-      const left = termRect.left + cursorRect.left - overlayRect.left;
-      const top = termRect.top + cursorRect.top - overlayRect.top;
-      const width = cursorRect.width;
-      const height = cursorRect.height;
+      const left = termRect.left + cursorFrame.x - overlayRect.left;
+      const top = termRect.top + cursorFrame.y - overlayRect.top;
+      const width = cursorFrame.width;
+      const height = cursorFrame.height;
 
       if (this._prevCursorRect &&
         this._prevCursorRect.left === left &&
@@ -337,11 +336,12 @@ exports.decorateTerm = (Term, { React, notify }) => {
     }
 
     setActive(active) {
-      this._overlay.classList.toggle('hypercat-active', active);
-      this._termCursor.classList.toggle('hypercat-active', active);
+      this._overlay.classList.toggle('hypercat-active', true);
+      // this._overlay.classList.toggle('hypercat-active', active);
+      // this._termCursor.classList.toggle('hypercat-active', active);
 
       if (active) {
-        this._termScreen.style.color = 'white';
+        // this._termScreen.style.color = 'white';
         playAudio();
 
         clearTimeout(this._activeTimeout);
@@ -350,7 +350,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         }, ACTIVE_DURATION)
       } else {
         if (this.props.term) { // sometimes null
-          this._termScreen.style.color = this.props.term.foregroundColor_;
+          // this._termScreen.style.color = this.props.term.foregroundColor_;
         }
       }
     }
@@ -362,9 +362,56 @@ exports.decorateTerm = (Term, { React, notify }) => {
     }
 
     render() {
-      return React.createElement(Term, Object.assign({}, this.props, {
-        onTerminal: this._onTerminal
-      }));
+      return React.createElement('div', {}, [
+        React.createElement(Term, Object.assign({}, this.props, {
+          onDecorated: this._onDecorated,
+          onCursorMove: this._onCursorMove
+        })),
+        React.createElement('style', {}, `
+        .hypercat-overlay {
+          overflow: hidden;
+          display: none;
+          height: 100%;
+        }
+  
+        canvas {
+          display: block;
+          height: 100%;
+          overflow: hidden;
+        }
+  
+        .hypercat-overlay.hypercat-active {
+          display: block;
+          background-image: url(file://${css_path});
+          background-repeat: repeat;
+          -webkit-animation: starscroll 4s infinite linear
+        }
+  
+        @-webkit-keyframes starscroll {
+          from {background-position:0 0;}
+          to {background-position:-1600px 0;}
+        }
+  
+        .hypercat-cursor {
+          position: absolute;
+          pointerEvents: none;
+          background: radial-gradient(circle, ${DEEPPINK} 10%, transparent 10%),
+            radial-gradient(circle, ${DEEPPINK} 10%, ${PINK} 10%) 3px 3px;
+          backgroundSize: 6px 6px;
+          borderWidth: 1px;
+          borderColor: black;
+          borderStyle: solid;
+        }
+        .hypercat-asset {
+          display: none;
+          position: absolute;
+          pointerEvents: none;
+        }
+        .xterm .xterm-viewport {
+          background-color: rgba(0, 0, 0, 0) !important; 
+        }
+        `)
+      ]);
     }
 
     componentWillUnmount() {
