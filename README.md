@@ -1,3 +1,5 @@
+# DOES NOT WORK WITH HYPER v2...YET
+
 Turn your [Hyper](https://hyper.is/) terminal into nyan cat while typing. Audio included!
 
 ![Screen Capture](capture.gif?raw=true "Screen Capture")
