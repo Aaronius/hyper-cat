@@ -25,9 +25,14 @@ module.exports = {
   config: {
     ...
     hyperCat: {
-      staggerHeight: 2, // The number of pixels the cat and rainbow should jump up and down.
-      rainbowMaxAlpha: 1, // The max opacity of the rainbow.
-      audioEnabled: true // Whether audio should play while typing.
+      // The number of pixels the cat and rainbow should jump up and down.
+      staggerHeight: 2, 
+      // The max opacity of the rainbow.
+      rainbowMaxAlpha: 1, 
+      // Whether audio should play while typing.
+      audioEnabled: true, 
+      // Whether the cat is always active instead of only on keystroke.
+      alwaysActive: false 
     }
     ...
   }

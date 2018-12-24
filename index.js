@@ -26,7 +26,8 @@ const ACTIVE_DURATION = 250;
 var config = {
   staggerHeight: 2,
   rainbowMaxAlpha: 1,
-  audioEnabled: true
+  audioEnabled: true,
+  alwaysActive: false
 };
 
 // Share audio across terminal instances.
@@ -120,27 +121,27 @@ exports.decorateTerm = (Term, { React, notify }) => {
           display: 'block',
           width: this._catHead.naturalWidth * scale + 'px',
           height: this._catHead.naturalHeight * scale + 'px',
-          left: left + width - this._catHead.width * .75 + 'px',
+          left: left + width - (this._catHead.naturalWidth * scale) * .75 + 'px',
           // Bottom of the head should align with the bottom of the cursor.
           // There are basically 15 rows of blocks, 2 of which extend below the head.
           // These 2 rows of blocks contain the front legs.
-          top: staggerTop + height - this._catHead.height * (13 / 15) + 'px'
+          top: staggerTop + height - (this._catHead.naturalHeight * scale) * (13 / 15) + 'px'
         });
 
         Object.assign(this._catLegs.style, {
           display: 'block',
           width: this._catLegs.naturalWidth * scale + 'px',
           height: this._catLegs.naturalHeight * scale + 'px',
-          left: left - this._catLegs.width * (2 / 10) + 'px',
-          top: staggerTop + height - this._catLegs.height * (2 / 4) + 'px'
+          left: left - (this._catLegs.naturalWidth * scale) * (2 / 10) + 'px',
+          top: staggerTop + height - (this._catLegs.naturalHeight * scale) * (2 / 4) + 'px'
         });
 
         Object.assign(this._catTail.style, {
           display: 'block',
           width: this._catTail.naturalWidth * scale + 'px',
           height: this._catTail.naturalHeight * scale + 'px',
-          left: left - this._catTail.width + 'px',
-          top: staggerTop + height - this._catTail.height * (11 / 7) + 'px'
+          left: left - (this._catTail.naturalWidth * scale) + 'px',
+          top: staggerTop + height - (this._catTail.naturalHeight * scale) * (11 / 7) + 'px'
         });
       }
 
@@ -278,6 +279,10 @@ exports.decorateTerm = (Term, { React, notify }) => {
     }
 
     setActive(active) {
+      if (config.alwaysActive) {
+        active = true;
+      }
+
       this._overlay.classList.toggle('hypercat-active', active);
       this.setState({ active });
 
