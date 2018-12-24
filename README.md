@@ -1,5 +1,3 @@
-# DOES NOT WORK WITH HYPER v2...YET. If you're interested in making this work with v2, let me know in a comment on https://github.com/Aaronius/hyper-cat/issues/11
-
 Turn your [Hyper](https://hyper.is/) terminal into nyan cat while typing. Audio included!
 
 ![Screen Capture](capture.gif?raw=true "Screen Capture")

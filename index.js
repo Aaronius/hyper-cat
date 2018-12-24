@@ -1,9 +1,7 @@
-const e = require('electron')
+const electron = require('electron');
 const Color = require('color');
 const path = require('path');
-var css_path = path.join(__dirname, 'stars.jpg');
-
-css_path = css_path.replace(/\\/g, "/");
+const starsCssPath = path.join(__dirname, 'stars.jpg').replace(/\\/g, "/");
 
 const RAINBOW_ALPHA_DECAY = 0.95;
 const RAINBOW_COLORS = [
@@ -31,61 +29,6 @@ var config = {
   audioEnabled: true
 };
 
-exports.decorateConfig = config => {
-  return Object.assign({}, config, {
-    cursorShape: 'block',
-    termCSS: `
-      ${config.termCSS || ''}
-      .cursor-node.hypercat-active {
-        opacity: 0 !important;
-      };
-    `,
-    css: `
-      ${config.css || ''}
-      .hypercat-overlay {
-        overflow: hidden;
-        display: none;
-        height: 100%;
-      }
-
-      canvas {
-        display: block;
-        height: 100%;
-        overflow: hidden;
-      }
-
-      .hypercat-overlay.hypercat-active {
-        display: block;
-        background-image: url(file://${css_path});
-        background-repeat: repeat;
-        -webkit-animation: starscroll 4s infinite linear
-      }
-
-      @-webkit-keyframes starscroll {
-        from {background-position:0 0;}
-        to {background-position:-1600px 0;}
-      }
-
-      .hypercat-cursor {
-        position: absolute;
-        pointerEvents: none;
-        background: radial-gradient(circle, ${DEEPPINK} 10%, transparent 10%),
-          radial-gradient(circle, ${DEEPPINK} 10%, ${PINK} 10%) 3px 3px;
-        backgroundSize: 6px 6px;
-        borderWidth: 1px;
-        borderColor: black;
-        borderStyle: solid;
-      }
-      .hypercat-asset {
-        display: none;
-        position: absolute;
-        pointerEvents: none;
-      }
-    `
-  })
-};
-
-
 // Share audio across terminal instances.
 let audio;
 let audioTimeout;
@@ -99,178 +42,55 @@ const playAudio = () => {
   audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
 };
 
-
-// code based on
-// https://atom.io/packages/power-mode
-// https://github.com/itszero/rage-power/blob/master/index.jsx
 exports.decorateTerm = (Term, { React, notify }) => {
-
-
-  // app/config isn't loaded when hyper loads. grab from config when we can. Nyan on.
-
-  config = Object.assign(config, e.remote.app.config.getConfig().hyperCat);
+  // There might be a better way to get this config. Nyan on.
+  config = Object.assign(config, electron.remote.app.config.getConfig().hyperCat);
 
   return class extends React.Component {
     constructor (props, context) {
       super(props, context);
-      this._drawFrame = this._drawFrame.bind(this);
-      this._resizeCanvas = this._resizeCanvas.bind(this);
-      this._onTerminal = this._onTerminal.bind(this);
-      this._onCursorChange = this._onCursorChange.bind(this);
+      this.state = {
+        active: false
+      };
+
+      this.drawFrame = this.drawFrame.bind(this);
+      this.resizeCanvas = this.resizeCanvas.bind(this);
+      this.onDecorated = this.onDecorated.bind(this);
+      this.onCursorMove = this.onCursorMove.bind(this);
       this._rainbows = [];
     }
 
-    _onTerminal (term) {
-      if (this.props.onTerminal) this.props.onTerminal(term);
-      this._termDiv = term.div_;
-      this._termCursor = term.cursorNode_;
-      this._termWindow = term.document_.defaultView;
-      this._termScreen = term.document_.querySelector('x-screen');
-      this._observer = new MutationObserver(this._onCursorChange);
-      this._observer.observe(this._termCursor, {
-        attributes: true,
-        childList: false,
-        characterData: false
-      });
-
-      this._initAudio();
-      this._initOverlay();
+    componentWillReceiveProps(nextProps) {
+      if (!nextProps.isTermActive) {
+        this.setActive(false);
+      }
     }
 
-    _initAudio() {
-      if (audio) {
-        return;
+    onDecorated (term) {
+      if (this.props.onDecorated) {
+        this.props.onDecorated(term);
       }
 
-      audio = document.createElement('audio');
-      audio.id = 'audio-player';
-      audio.src = path.join(__dirname, 'nyan.mp3');
-      audio.type = 'audio/mpeg';
-      document.body.appendChild(audio);
+      this._termDiv = term ? term.termRef : null;
+
+      if (this._termDiv) {
+        this.initAudio();
+        this.initOverlay();
+      }
     }
 
-    _initOverlay() {
-      this._overlay = document.createElement('div');
-      this._overlay.classList.add('hypercat-overlay');
-      document.body.appendChild(this._overlay);
-
-      this._canvas = document.createElement('canvas');
-      this._canvasContext = this._canvas.getContext('2d');
-      this._canvas.width = window.innerWidth;
-      this._canvas.height = window.innerHeight;
-      this._overlay.appendChild(this._canvas);
-
-      this._termWindow.requestAnimationFrame(this._drawFrame);
-      this._termWindow.addEventListener('resize', this._resizeCanvas);
-
-      this._initCatCursor();
-      this._initCatAssets();
-    }
-
-    _createCatAsset(filename) {
-      const img = new Image();   // Create new img element
-      img.src = path.join(__dirname, filename);
-      img.classList.add('hypercat-asset');
-      this._overlay.appendChild(img);
-      return img;
-    }
-
-    _initCatAssets() {
-      this._catLegs = this._createCatAsset('legs.svg');
-      this._catHead = this._createCatAsset('head.svg');
-      this._catTail = this._createCatAsset('tail.svg');
-    }
-
-    _initCatCursor() {
-      const catCursor = document.createElement('div');
-      catCursor.classList.add('hypercat-cursor');
-
-      this._overlay.appendChild(catCursor);
-      this._catCursor = catCursor;
-    }
-
-    _resizeCanvas() {
-      this._canvas.width = window.innerWidth;
-      this._canvas.height = window.innerHeight;
-    }
-
-    _drawRainbow(ctx, rainbow, staggerUp) {
-      const stripeHeight = rainbow.height / RAINBOW_COLORS.length;
-
-      RAINBOW_COLORS.forEach((color, i) => {
-        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
-        ctx.fillRect(
-          rainbow.left,
-          rainbow.top + stripeHeight * i + (staggerUp ? -config.staggerHeight : config.staggerHeight),
-          rainbow.width,
-          stripeHeight
-        );
-      });
-    }
-
-    _drawFrame() {
-      this._canvasContext.clearRect(0, 0, this._canvas.width, this._canvas.height);
-
-      let staggerUp = !this._isStaggeredUp;
-
-      for (var i = this._rainbows.length - 1; i >= 0; i--) {
-        const rainbow = this._rainbows[i];
-        this._drawRainbow(this._canvasContext, rainbow, staggerUp);
-
-        rainbow.alpha *= RAINBOW_ALPHA_DECAY;
-
-        if (rainbow.alpha < 0.1) {
-          this._rainbows.splice(i, 1);
-        }
-
-        staggerUp = !staggerUp;
+    onCursorMove(cursorFrame) {
+      if (this.props.onCursorMove) {
+        this.props.onCursorMove(cursorFrame);
       }
 
-      this._termWindow.requestAnimationFrame(this._drawFrame);
-    }
-
-    _spawnRainbow(rect) {
-      // Make the rainbow a bit shorter than the cat for a proper nyan.
-      this._rainbows.push(Object.assign({ alpha: config.rainbowMaxAlpha }, {
-        left: rect.left,
-        top: rect.top + rect.height * .1,
-        width: rect.width,
-        height: rect.height * .80
-      }));
-    }
-
-    _getOverlayBoundingClientRect() {
-      // Getting the bounding client rect is futile unless it's visible. If it's not already visible, we'll
-      // make it visible, take the measurement, then hide it.
-      // It's possible that the bounding client rect never changes so we could just take the measurement on startup,
-      // but who knows what other plugins will do.
-      const overlayIsVisible = this._overlay.classList.contains('hypercat-active');
-
-      if (!overlayIsVisible) {
-        this._overlay.classList.add('hypercat-active');
-      }
-
-      const rect = this._overlay.getBoundingClientRect();
-
-      if (!overlayIsVisible) {
-        this._overlay.classList.remove('hypercat-active');
-      }
-
-      return rect;
-    }
-
-    _onCursorChange() {
-      // Some plugins, like hyperborder, make it so that the hyper-cat overlay (the container that contains all the
-      // hypercat stuff) is not at top=0 left=0. Because of this, we need to make the appropriate adjustment when
-      // figuring out where the cat cursor will be placed inside the overlay container.
-      const overlayRect = this._getOverlayBoundingClientRect();
+      const overlayRect = this.getOverlayBoundingClientRect();
       const termRect = this._termDiv.getBoundingClientRect();
-      const cursorRect = this._termCursor.getBoundingClientRect();
 
-      const left = termRect.left + cursorRect.left - overlayRect.left;
-      const top = termRect.top + cursorRect.top - overlayRect.top;
-      const width = cursorRect.width;
-      const height = cursorRect.height;
+      const left = termRect.left + cursorFrame.x - overlayRect.left;
+      const top = termRect.top + cursorFrame.y - overlayRect.top;
+      const width = cursorFrame.width;
+      const height = cursorFrame.height;
 
       if (this._prevCursorRect &&
         this._prevCursorRect.left === left &&
@@ -325,7 +145,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
       }
 
       if (this._prevCursorRect) {
-        this._spawnRainbow(this._prevCursorRect);
+        this.spawnRainbow(this._prevCursorRect);
       }
 
       this._prevCursorRect = {
@@ -336,43 +156,188 @@ exports.decorateTerm = (Term, { React, notify }) => {
       };
     }
 
+    initAudio() {
+      if (audio) {
+        return;
+      }
+
+      audio = document.createElement('audio');
+      audio.id = 'audio-player';
+      audio.src = path.join(__dirname, 'nyan.mp3');
+      audio.type = 'audio/mpeg';
+      document.body.appendChild(audio);
+    }
+
+    initOverlay() {
+      this._overlay = document.createElement('div');
+      this._overlay.classList.add('hypercat-overlay');
+      this._termDiv.insertBefore(this._overlay, this._termDiv.firstChild);
+
+      this._canvas = document.createElement('canvas');
+      this._canvasContext = this._canvas.getContext('2d');
+      this.resizeCanvas();
+
+      this._overlay.appendChild(this._canvas);
+
+      window.requestAnimationFrame(this.drawFrame);
+      window.addEventListener('resize', this.resizeCanvas);
+
+      this.initCatCursor();
+      this.initCatAssets();
+    }
+
+    createCatAsset(filename) {
+      const img = new Image();   // Create new img element
+      img.src = path.join(__dirname, filename);
+      img.classList.add('hypercat-asset');
+      this._overlay.appendChild(img);
+      return img;
+    }
+
+    initCatAssets() {
+      this._catLegs = this.createCatAsset('legs.svg');
+      this._catHead = this.createCatAsset('head.svg');
+      this._catTail = this.createCatAsset('tail.svg');
+    }
+
+    initCatCursor() {
+      const catCursor = document.createElement('div');
+      catCursor.classList.add('hypercat-cursor');
+
+      this._overlay.appendChild(catCursor);
+      this._catCursor = catCursor;
+    }
+
+    resizeCanvas() {
+      const overlayRect = this.getOverlayBoundingClientRect();
+      this._canvas.width = overlayRect.width;
+      this._canvas.height = overlayRect.height;
+    }
+
+    drawRainbow(ctx, rainbow, staggerUp) {
+      const stripeHeight = rainbow.height / RAINBOW_COLORS.length;
+
+      RAINBOW_COLORS.forEach((color, i) => {
+        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${rainbow.alpha})`;
+        ctx.fillRect(
+          rainbow.left,
+          rainbow.top + stripeHeight * i + (staggerUp ? -config.staggerHeight : config.staggerHeight),
+          rainbow.width,
+          stripeHeight
+        );
+      });
+    }
+
+    drawFrame() {
+      this._canvasContext.clearRect(0, 0, this._canvas.width, this._canvas.height);
+
+      let staggerUp = !this._isStaggeredUp;
+
+      for (var i = this._rainbows.length - 1; i >= 0; i--) {
+        const rainbow = this._rainbows[i];
+        this.drawRainbow(this._canvasContext, rainbow, staggerUp);
+
+        rainbow.alpha *= RAINBOW_ALPHA_DECAY;
+
+        if (rainbow.alpha < 0.1) {
+          this._rainbows.splice(i, 1);
+        }
+
+        staggerUp = !staggerUp;
+      }
+
+      window.requestAnimationFrame(this.drawFrame);
+    }
+
+    spawnRainbow(rect) {
+      // Make the rainbow a bit shorter than the cat for a proper nyan.
+      this._rainbows.push(Object.assign({ alpha: config.rainbowMaxAlpha }, {
+        left: rect.left,
+        top: rect.top + rect.height * .1,
+        width: rect.width,
+        height: rect.height * .80
+      }));
+    }
+
+    getOverlayBoundingClientRect() {
+      // Getting the bounding client rect is futile unless it's visible. If it's not already visible, we'll
+      // make it visible, take the measurement, then hide it.
+      const overlayIsVisible = this._overlay.classList.contains('hypercat-active');
+
+      if (!overlayIsVisible) {
+        this._overlay.classList.add('hypercat-active');
+      }
+
+      const rect = this._overlay.getBoundingClientRect();
+
+      if (!overlayIsVisible) {
+        this._overlay.classList.remove('hypercat-active');
+      }
+
+      return rect;
+    }
+
     setActive(active) {
       this._overlay.classList.toggle('hypercat-active', active);
-      this._termCursor.classList.toggle('hypercat-active', active);
+      this.setState({ active });
 
       if (active) {
-        this._termScreen.style.color = 'white';
         playAudio();
-
         clearTimeout(this._activeTimeout);
         this._activeTimeout = setTimeout(() => {
           this.setActive(false);
         }, ACTIVE_DURATION)
-      } else {
-        if (this.props.term) { // sometimes null
-          this._termScreen.style.color = this.props.term.foregroundColor_;
-        }
-      }
-    }
-
-    componentWillReceiveProps(nextProps) {
-      if (!nextProps.isTermActive) {
-        this.setActive(false);
       }
     }
 
     render() {
-      return React.createElement(Term, Object.assign({}, this.props, {
-        onTerminal: this._onTerminal
-      }));
-    }
-
-    componentWillUnmount() {
-      document.body.removeChild(this._overlay);
-
-      if (this._observer) {
-        this._observer.disconnect();
-      }
+      return [
+        React.createElement(Term, Object.assign({}, this.props, {
+          onDecorated: this.onDecorated,
+          onCursorMove: this.onCursorMove,
+          backgroundColor: this.state.active ? 'rgba(0, 0, 0, 0)' : this.props.backgroundColor,
+          cursorColor: this.state.active ? 'rgba(0, 0, 0, 0)' : this.props.cursorColor,
+          foregroundColor: this.state.active ? 'rgba(255, 255, 255, 1)' : this.props.foregroundColor
+        })),
+        React.createElement('style', {}, `
+          @keyframes starscroll {
+            from {background-position:0 0;}
+            to {background-position:-1600px 0;}
+          }
+          
+          .hypercat-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+          }
+          
+          .hypercat-overlay.hypercat-active {
+            display: block;
+            background-image: url(file://${starsCssPath});
+            background-repeat: repeat;
+            -webkit-animation: starscroll 4s infinite linear
+          }
+          
+          .hypercat-cursor {
+            position: absolute;
+            pointerEvents: none;
+            background: radial-gradient(circle, ${DEEPPINK} 10%, transparent 10%),
+              radial-gradient(circle, ${DEEPPINK} 10%, ${PINK} 10%) 3px 3px;
+            backgroundSize: 6px 6px;
+            borderWidth: 1px;
+            borderColor: black;
+            borderStyle: solid;
+          }
+          
+          .hypercat-asset {
+            position: absolute;
+            pointerEvents: none;
+          }
+        `)
+      ];
     }
   }
 };
