@@ -26,21 +26,22 @@ const ACTIVE_DURATION = 250;
 var config = {
   staggerHeight: 2,
   rainbowMaxAlpha: 1,
-  audioEnabled: true,
+  audioEnabled: false,
   alwaysActive: false
 };
 
 // Share audio across terminal instances.
 let audio;
-let audioTimeout;
 const playAudio = () => {
   if (!config.audioEnabled) {
     return;
   }
 
-  clearTimeout(audioTimeout);
   audio.play();
-  audioTimeout = setTimeout(audio.pause.bind(audio), ACTIVE_DURATION);
+};
+
+const pauseAudio = () => {
+  audio.pause();
 };
 
 exports.decorateTerm = (Term, { React, notify }) => {
@@ -166,6 +167,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
       audio.id = 'audio-player';
       audio.src = path.join(__dirname, 'nyan.mp3');
       audio.type = 'audio/mpeg';
+      audio.loop = true;
       document.body.appendChild(audio);
     }
 
@@ -280,6 +282,10 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
     setActive(active) {
       if (config.alwaysActive) {
+        if (this.state.active) {
+          return;
+        }
+
         active = true;
       }
 
@@ -292,6 +298,8 @@ exports.decorateTerm = (Term, { React, notify }) => {
         this._activeTimeout = setTimeout(() => {
           this.setActive(false);
         }, ACTIVE_DURATION)
+      } else {
+        pauseAudio();
       }
     }
 
