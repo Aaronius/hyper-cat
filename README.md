@@ -31,7 +31,7 @@ module.exports = {
       rainbowMaxAlpha: 1, 
       // Whether audio should play while typing.
       audioEnabled: true, 
-      // Whether the cat is always active instead of only on keystroke.
+      // Whether the cat is always active instead of only while typing.
       alwaysActive: false 
     }
     ...
