@@ -21,6 +21,8 @@ const DEEPPINK = '#f90297';
 const GRAY = '#9d9d9d';
 const SALMON = '#ff9593';
 
+const AUDIO_ENABLED_WHILE_TYPING = 'whileTyping';
+
 const ACTIVE_DURATION = 250;
 
 var config = {
@@ -52,7 +54,8 @@ exports.decorateTerm = (Term, { React, notify }) => {
     constructor (props, context) {
       super(props, context);
       this.state = {
-        active: false
+        activeVisual: false,
+        activeAudio: false
       };
 
       this.drawFrame = this.drawFrame.bind(this);
@@ -280,26 +283,50 @@ exports.decorateTerm = (Term, { React, notify }) => {
       return rect;
     }
 
-    setActive(active) {
+    toggleAudio(active) {
+      if (config.alwaysActive && config.audioEnabled && (active || config.audioEnabled !== AUDIO_ENABLED_WHILE_TYPING)) {
+        if (this.state.activeAudio) {
+          return true;
+        }
+
+        active = true;
+      }
+
+      if (active) {
+        playAudio();
+      } else {
+        pauseAudio();
+      }
+
+      return active;
+    }
+
+    toggleVisual(active) {
       if (config.alwaysActive) {
-        if (this.state.active) {
-          return;
+        if (this.state.activeVisual) {
+          return true;
         }
 
         active = true;
       }
 
       this._overlay.classList.toggle('hypercat-active', active);
-      this.setState({ active });
+      return active;
+    }
+
+    setActive(active) {
+      const activeAudio = this.toggleAudio(active);
+      const activeVisual = this.toggleVisual(active);
+
+      if (activeAudio !== this.state.activeAudio || activeVisual !== this.state.activeVisual) {
+        this.setState({ activeAudio, activeVisual });
+      }
 
       if (active) {
-        playAudio();
         clearTimeout(this._activeTimeout);
         this._activeTimeout = setTimeout(() => {
           this.setActive(false);
-        }, ACTIVE_DURATION)
-      } else {
-        pauseAudio();
+        }, ACTIVE_DURATION);
       }
     }
 
@@ -308,9 +335,9 @@ exports.decorateTerm = (Term, { React, notify }) => {
         React.createElement(Term, Object.assign({}, this.props, {
           onDecorated: this.onDecorated,
           onCursorMove: this.onCursorMove,
-          backgroundColor: this.state.active ? 'rgba(0, 0, 0, 0)' : this.props.backgroundColor,
-          cursorColor: this.state.active ? 'rgba(0, 0, 0, 0)' : this.props.cursorColor,
-          foregroundColor: this.state.active ? 'rgba(255, 255, 255, 1)' : this.props.foregroundColor
+          backgroundColor: this.state.activeVisual ? 'rgba(0, 0, 0, 0)' : this.props.backgroundColor,
+          cursorColor: this.state.activeVisual ? 'rgba(0, 0, 0, 0)' : this.props.cursorColor,
+          foregroundColor: this.state.activeVisual ? 'rgba(255, 255, 255, 1)' : this.props.foregroundColor
         })),
         React.createElement('style', {}, `
           @keyframes starscroll {

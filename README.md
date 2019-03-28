@@ -29,7 +29,10 @@ module.exports = {
       staggerHeight: 2, 
       // The max opacity of the rainbow.
       rainbowMaxAlpha: 1, 
-      // Whether audio should play while typing.
+      // When audio shall be enabled:
+      //   true will enable audio while visual is displayed.
+      //   false will always disable audio.
+      //   "whileTyping" will enable audio only while typing (even if alwaysActive = true).
       audioEnabled: true, 
       // Whether the cat is always active instead of only while typing.
       alwaysActive: false 
