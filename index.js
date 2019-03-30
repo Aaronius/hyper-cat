@@ -21,24 +21,20 @@ const DEEPPINK = '#f90297';
 const GRAY = '#9d9d9d';
 const SALMON = '#ff9593';
 
-const AUDIO_ENABLED_WHILE_TYPING = 'whileTyping';
+const WHILE_TYPING = 'whileTyping';
 
 const ACTIVE_DURATION = 250;
 
 var config = {
   staggerHeight: 2,
   rainbowMaxAlpha: 1,
-  audioEnabled: true,
-  alwaysActive: false
+  audioEnabled: WHILE_TYPING,
+  videoEnabled: WHILE_TYPING
 };
 
 // Share audio across terminal instances.
 let audio;
 const playAudio = () => {
-  if (!config.audioEnabled) {
-    return;
-  }
-
   audio.play();
 };
 
@@ -54,8 +50,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
     constructor (props, context) {
       super(props, context);
       this.state = {
-        activeVisual: false,
-        activeAudio: false
+        videoActive: false
       };
 
       this.drawFrame = this.drawFrame.bind(this);
@@ -63,12 +58,6 @@ exports.decorateTerm = (Term, { React, notify }) => {
       this.onDecorated = this.onDecorated.bind(this);
       this.onCursorMove = this.onCursorMove.bind(this);
       this._rainbows = [];
-    }
-
-    componentWillReceiveProps(nextProps) {
-      if (!nextProps.isTermActive) {
-        this.setActive(false);
-      }
     }
 
     onDecorated (term) {
@@ -105,7 +94,7 @@ exports.decorateTerm = (Term, { React, notify }) => {
         return;
       }
 
-      this.setActive(true);
+      this.updateAudioVideo(true);
 
       this._isStaggeredUp = !this._isStaggeredUp;
 
@@ -283,49 +272,27 @@ exports.decorateTerm = (Term, { React, notify }) => {
       return rect;
     }
 
-    toggleAudio(active) {
-      if (config.alwaysActive && config.audioEnabled && (active || config.audioEnabled !== AUDIO_ENABLED_WHILE_TYPING)) {
-        if (this.state.activeAudio) {
-          return true;
-        }
-
-        active = true;
-      }
-
-      if (active) {
-        playAudio();
-      } else {
-        pauseAudio();
-      }
-
-      return active;
+    updateAudio(typing) {
+      let active = config.audioEnabled === true || (typing && config.audioEnabled === WHILE_TYPING);
+      active ? playAudio() : pauseAudio();
     }
 
-    toggleVisual(active) {
-      if (config.alwaysActive) {
-        if (this.state.activeVisual) {
-          return true;
-        }
-
-        active = true;
-      }
-
+    updateVisual(typing) {
+      let active = config.videoEnabled === true || (typing && config.videoEnabled === WHILE_TYPING);
       this._overlay.classList.toggle('hypercat-active', active);
-      return active;
+      this.setState({
+        videoActive: active
+      });
     }
 
-    setActive(active) {
-      const activeAudio = this.toggleAudio(active);
-      const activeVisual = this.toggleVisual(active);
+    updateAudioVideo(typing) {
+      this.updateAudio(typing);
+      this.updateVisual(typing);
 
-      if (activeAudio !== this.state.activeAudio || activeVisual !== this.state.activeVisual) {
-        this.setState({ activeAudio, activeVisual });
-      }
-
-      if (active) {
+      if (typing) {
         clearTimeout(this._activeTimeout);
         this._activeTimeout = setTimeout(() => {
-          this.setActive(false);
+          this.updateAudioVideo(false);
         }, ACTIVE_DURATION);
       }
     }
@@ -335,9 +302,9 @@ exports.decorateTerm = (Term, { React, notify }) => {
         React.createElement(Term, Object.assign({}, this.props, {
           onDecorated: this.onDecorated,
           onCursorMove: this.onCursorMove,
-          backgroundColor: this.state.activeVisual ? 'rgba(0, 0, 0, 0)' : this.props.backgroundColor,
-          cursorColor: this.state.activeVisual ? 'rgba(0, 0, 0, 0)' : this.props.cursorColor,
-          foregroundColor: this.state.activeVisual ? 'rgba(255, 255, 255, 1)' : this.props.foregroundColor
+          backgroundColor: this.state.videoActive ? 'rgba(0, 0, 0, 0)' : this.props.backgroundColor,
+          cursorColor: this.state.videoActive ? 'rgba(0, 0, 0, 0)' : this.props.cursorColor,
+          foregroundColor: this.state.videoActive ? 'rgba(255, 255, 255, 1)' : this.props.foregroundColor
         })),
         React.createElement('style', {}, `
           @keyframes starscroll {
