@@ -26,7 +26,7 @@ const ACTIVE_DURATION = 250;
 var config = {
   staggerHeight: 2,
   rainbowMaxAlpha: 1,
-  audioEnabled: false,
+  audioEnabled: true,
   alwaysActive: false
 };
 
